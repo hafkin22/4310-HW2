@@ -1,8 +1,19 @@
 <html>
     <head>
         <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://d3js.org/topojson.v3.min.js"></script>
     </head>
     <body>
         <h1>THIS IS WORKING</h1>
+        <script>
+
+            const requestData = async () => {
+                const neighborhoods = await d3.json("ny-neighborhoods.json");
+                const air_data = await d3.csv("Air_Quality_20250219.csv");
+                console.log(neighborhoods);
+                console.log(air_data);
+            }
+            requestData();
+        </script>
     </body>
 </html>
