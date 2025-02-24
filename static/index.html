@@ -5,6 +5,10 @@
 
         <style>
 
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+            }
+
             .outline {
                 fill: none;
                 stroke: black;
@@ -22,10 +26,8 @@
             }
 
             .detail_box {
-                width: 300px;
-                border: solid black;
-                border-width: 2px;
-                padding: 10px;
+                width: 500px;
+                height: 400px;
             }
         </style>
     </head>
@@ -40,13 +42,15 @@
                         <option value="n2_2022">Nitrogen</option>
                     </select>
                 </div>
+                <p>Select a neighborhood for more details</p>
                 <svg id="chart1" height="600" width="650"></svg>
 
                 <svg id="colorLegend" height="50" width="300" style="background: #fff; margin-top:30px" ></svg>
             </div>
             <div class="detail_box">
-                <h2>Neighborhood Details:</h2>
-                <text id="details"></text>
+                <h3 id="neighborhood_name"></h3>
+                <p id="fp_measure"></p>
+                <p id="n2_measure"></p>
             </div>
         </div>
 
@@ -141,6 +145,7 @@
 
                     map.selectAll("path").remove();
                     legend.selectAll("g").remove();
+                    clear_selection();
 
                     let currentSelection = Selector.property("value");
 
@@ -174,13 +179,32 @@
             }
             requestData();
 
-            function select_neighborhood() {
+            function clear_selection() {
                 map.selectAll("path.neighborhood").attr("stroke", "none");
-                let neighborhood = d3.select(this);
-
-                neighborhood.attr("stroke", "black")
-                            .attr("stroke-width", 3);
+                d3.select("#neighborhood_name").text("");
+                d3.select("#fp_measure").text("");
+                d3.select("#n2_measure").text("");
             }
+
+            function select_neighborhood() {
+                let neighborhood = d3.select(this);
+                let neighborhood_data = neighborhood.datum();
+                if (d3.select("#neighborhood_name").text() == neighborhood_data.properties['GEONAME']) {
+                    clear_selection();
+                }
+                else {
+                    map.selectAll("path.neighborhood").attr("stroke", "none");
+
+                    neighborhood.attr("stroke", "black")
+                                .attr("stroke-width", 3);   
+                    
+                    d3.select("#neighborhood_name").text(neighborhood_data.properties['GEONAME']);
+                    d3.select("#fp_measure").text("Fine Particles Measurement: " + neighborhood_data.properties['fp_2022'] + " mcg/m3");
+                    d3.select("#n2_measure").text("Nitrogen Measurement: " + neighborhood_data.properties['n2_2022'] + " ppb");
+                }
+            }
+
+            
 
             function drawLegend(legendSelector, legendColorScale) {
       
