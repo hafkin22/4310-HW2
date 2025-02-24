@@ -29,6 +29,13 @@
                 width: 500px;
                 height: 400px;
             }
+            .gridlines .domain {
+                display: none;
+            }
+    
+            .gridlines line {
+                stroke: #aaa;
+            }
         </style>
     </head>
     <body>
@@ -51,11 +58,14 @@
                 <h3 id="neighborhood_name"></h3>
                 <p id="fp_measure"></p>
                 <p id="n2_measure"></p>
+                <svg id="mini_fpgraph" height="200", width="450"></svg>
+                <svg id="mini_n2graph" height="200", width="450" style="margin-top:20px"></svg>
             </div>
         </div>
 
         <script>
 
+            // Main Map
             const svg = d3.select("#chart1");
             const width = svg.attr("width");
             const height = svg.attr("height");
@@ -65,20 +75,99 @@
             const map = svg.append("g")
                            .attr("transform","translate("+margin.left+","+margin.top+")");
 
+
+
+            // Mini Graphs
+            const fpsvg = d3.select("#mini_fpgraph");
+            const n2svg = d3.select("#mini_n2graph");
+            const minisvgwidth = fpsvg.attr("width");
+            const minisvgheight = fpsvg.attr("height");
+            const minimargin = { top: 35, right: 35, bottom: 35, left:35};
+            const miniWidth = minisvgwidth - minimargin.left - minimargin.right;
+            const miniHeight = minisvgheight - minimargin.top - minimargin.bottom;
+
+            let fpannotations = fpsvg.append("g").attr("id","annotations");
+            let fpchartArea = fpsvg.append("g").attr("id","points")
+                                               .attr("transform",`translate(${minimargin.left},${minimargin.top})`);
+
+            let n2annotations = n2svg.append("g").attr("id","annotations");
+            let n2chartArea = n2svg.append("g").attr("id","points")
+                                               .attr("transform",`translate(${minimargin.left},${minimargin.top})`);
+
+
+
             const requestData = async () => {
                 const nyc = await d3.json("UHF42.topo.json");
                 const air_data = await d3.csv("Air_Quality_20250219.csv");
                 console.log(nyc);
                 console.log(air_data);
 
-                // Pollution data -> Geo Join ID + Geo Type Name == "UHF42"
-                // air_data.forEach(d => {
-                //     if (d['Time Period'] == 'Annual Average 2022') {
-                //         console.log(d['Name'] + ' ' + d['Geo Place Name'] + ' ' + d['Data Value']);
-                //     }
-                // });
+                // Get annual averages over time for each neighborhood
+                var air_data_all = air_data.filter(d => (d['Time Period'].includes('Annual Average')) & (d['Geo Type Name'] == 'UHF42'));
 
-                // Only look at Annual Averages for 2022
+                air_data_all.forEach(d => {
+                    d['year'] = parseInt(d['Time Period'].slice(-4));
+                    d['Data Value'] = parseFloat(d['Data Value']);
+                });
+                console.log(air_data_all);
+
+                const air_data_all_fp = air_data_all.filter(d => d['Name'] == "Fine particles (PM 2.5)");
+
+                const air_data_all_n2 = air_data_all.filter(d => d['Name'] == "Nitrogen dioxide (NO2)");
+
+                // Create extents/scales for mini graphs (line showing changes over time)
+                const fpminiExtent = d3.extent(air_data_all_fp, d => d['Data Value']);
+                const fpminiScale = d3.scaleLinear().domain(fpminiExtent).range([miniHeight, 0]);
+
+                const n2miniExtent = d3.extent(air_data_all_n2, d => d['Data Value']);
+                const n2miniScale = d3.scaleLinear().domain(n2miniExtent).range([miniHeight, 0]);
+
+                const yearExtent = d3.extent(air_data_all, d => d['year']);
+                console.log(yearExtent);
+                const yearScale = d3.scaleLinear().domain(yearExtent).range([0,miniWidth]);
+
+                // Create axes for mini graphs
+                let fpleftAxis = d3.axisLeft(fpminiScale)
+                let fpleftGridlines = d3.axisLeft(fpminiScale)
+                          .tickSize(-miniWidth-10)
+                          .tickFormat("");
+
+                let fpbottomAxis = d3.axisBottom(yearScale).tickFormat(d => d);
+                let fpbottomGridlines = d3.axisBottom(yearScale)
+                            .tickSize(-miniHeight-10)
+                            .tickFormat("");
+
+
+                let n2leftAxis = d3.axisLeft(n2miniScale)
+                let n2leftGridlines = d3.axisLeft(n2miniScale)
+                          .tickSize(-miniWidth-10)
+                          .tickFormat("");
+
+                let n2bottomAxis = d3.axisBottom(yearScale).tickFormat(d => d);
+                let n2bottomGridlines = d3.axisBottom(yearScale)
+                            .tickSize(-miniHeight-10)
+                            .tickFormat("");
+
+
+
+                // Create Line Generators
+                var fplineGen = d3.line()
+                    .x( d => yearScale(d['year']) )
+                    .y( d => fpminiScale(d['Data Value']) )
+                    .curve(d3.curveMonotoneX);
+
+
+                var n2lineGen = d3.line()
+                    .x( d => yearScale(d['year']) )
+                    .y( d => n2miniScale(d['Data Value']) )
+                    .curve(d3.curveMonotoneX);
+
+
+
+
+
+
+                // Only look at Annual Averages for 2022 for the map
                 const air_data_2022 = air_data.filter(d => (d['Time Period'] == 'Annual Average 2022') & (d['Geo Type Name'] == 'UHF42'));
                 console.log(air_data_2022);
 
@@ -114,9 +203,7 @@
 
                 console.log(neighborhoods);
 
-                // Create extents/scales for each
-                // const fpExtent = d3.extent(air_data_2022_fp, d => d['Data Value']);
-                // const 
+                // Create scales for each
                 const fpScale = d3.scaleQuantile()
                            .domain(d3.map(air_data_2022_fp, d => d['Data Value']))
                            .range(d3.schemeOranges[5]);
@@ -125,15 +212,6 @@
                 const n2Scale = d3.scaleQuantile()
                            .domain(d3.map(air_data_2022_n2, d => d['Data Value']))
                            .range(d3.schemeBlues[5]);
-
-                // // topo.json -> GEOCODE
-                // neighborhoods.objects.collection.geometries.forEach(d => {
-                //     if(d['properties']['GEOCODE'] == 102) {
-                //         console.log(d['properties']['GEONAME']);
-                //     }
-                // });
-
-
 
                 var projection = d3.geoMercator().fitSize([mapWidth, mapHeight], neighborhoods);
                 var path = d3.geoPath().projection(projection);
@@ -176,35 +254,131 @@
 
                 Selector.on("change", updatemap);
 
+
+
+                
+                function clear_selection() {
+                    map.selectAll("path.neighborhood").attr("stroke", "none");
+                    d3.select("#neighborhood_name").text("");
+                    d3.select("#fp_measure").text("");
+                    d3.select("#n2_measure").text("");
+                    fpannotations.selectAll("g").remove();
+                    n2annotations.selectAll("g").remove();
+                    fpchartArea.selectAll("path").remove();
+                    fpchartArea.selectAll("circle").remove();
+                    n2chartArea.selectAll("path").remove();
+                    n2chartArea.selectAll("circle").remove();
+                    
+                }
+
+                function select_neighborhood() {
+                    let neighborhood = d3.select(this);
+                    let neighborhood_data = neighborhood.datum();
+                    if (d3.select("#neighborhood_name").text() == neighborhood_data.properties['GEONAME']) {
+                        clear_selection();
+                    }
+                    else {
+                        fpannotations.selectAll("g").remove();
+                        n2annotations.selectAll("g").remove();
+                        fpchartArea.selectAll("path").remove();
+                        fpchartArea.selectAll("circle").remove();
+                        n2chartArea.selectAll("path").remove();
+                        n2chartArea.selectAll("circle").remove();
+                        map.selectAll("path.neighborhood").attr("stroke", "none");
+
+                        neighborhood.attr("stroke", "black")
+                                    .attr("stroke-width", 3);
+                                    
+                        let neighborhood_name = neighborhood_data.properties['GEONAME'];
+
+                        let neighborhood_code = neighborhood_data.properties['GEOCODE'];
+                        
+                        d3.select("#neighborhood_name").text(neighborhood_name);
+                        d3.select("#fp_measure").text("Fine Particles Measurement: " + neighborhood_data.properties['fp_2022'] + " mcg/m3");
+                        d3.select("#n2_measure").text("Nitrogen Measurement: " + neighborhood_data.properties['n2_2022'] + " ppb");
+
+                        fpannotations.append("g")
+                                .attr("class", "y axis")
+                                .attr("transform",`translate(${minimargin.left-10},${minimargin.top})`)
+                                .call(fpleftAxis)
+                        fpannotations.append("g")
+                                .attr("class", "y gridlines")
+                                .attr("transform",`translate(${minimargin.left-10},${minimargin.top})`)
+                                .call(fpleftGridlines);
+
+
+                        fpannotations.append("g")
+                                     .attr("class", "x axis")
+                                     .attr("transform",`translate(${minimargin.left},${miniHeight+minimargin.top+10})`)
+                                     .call(fpbottomAxis);
+                        fpannotations.append("g")
+                                     .attr("class", "x gridlines")
+                                     .attr("transform",`translate(${minimargin.left},${miniHeight+minimargin.top+10})`)
+                                     .call(fpbottomGridlines);
+
+                        fpchartArea.append("path")
+                                .datum(air_data_all_fp.filter(d => parseInt(d['Geo Join ID']) == neighborhood_code).sort((a, b) => a.year - b.year))
+                                .attr("class", "line")
+                                .attr("fill", "none")
+                                .attr("stroke", "orange")
+                                .attr("stroke-width", 3)
+                                .attr("d", fplineGen);
+
+                        fpchartArea.selectAll("circle").data(air_data_all_fp.filter(d => parseInt(d['Geo Join ID']) == neighborhood_code).sort((a, b) => a.year - b.year))
+                                .join("circle")
+                                .attr("r", 2)
+                                .attr("fill", "blue")
+                                .attr("cx", d => yearScale(d['year']))
+                                .attr("cy", d => fpminiScale(d['Data Value']));
+
+
+                        n2annotations.append("g")
+                                .attr("class", "y axis")
+                                .attr("transform",`translate(${minimargin.left-10},${minimargin.top})`)
+                                .call(n2leftAxis)
+                        n2annotations.append("g")
+                                .attr("class", "y gridlines")
+                                .attr("transform",`translate(${minimargin.left-10},${minimargin.top})`)
+                                .call(n2leftGridlines);
+
+
+                        n2annotations.append("g")
+                                     .attr("class", "x axis")
+                                     .attr("transform",`translate(${minimargin.left},${miniHeight+minimargin.top+10})`)
+                                     .call(n2bottomAxis);
+                        n2annotations.append("g")
+                                     .attr("class", "x gridlines")
+                                     .attr("transform",`translate(${minimargin.left},${miniHeight+minimargin.top+10})`)
+                                     .call(n2bottomGridlines);
+
+                        n2chartArea.append("path")
+                                .datum(air_data_all_n2.filter(d => parseInt(d['Geo Join ID']) == neighborhood_code).sort((a, b) => a.year - b.year))
+                                .attr("class", "line")
+                                .attr("fill", "none")
+                                .attr("stroke", "orange")
+                                .attr("stroke-width", 3)
+                                .attr("d", n2lineGen);
+
+                        n2chartArea.selectAll("circle").data(air_data_all_n2.filter(d => parseInt(d['Geo Join ID']) == neighborhood_code).sort((a, b) => a.year - b.year))
+                                .join("circle")
+                                .attr("r", 2)
+                                .attr("fill", "blue")
+                                .attr("cx", d => yearScale(d['year']))
+                                .attr("cy", d => n2miniScale(d['Data Value']));
+                    }
+                }
+
             }
             requestData();
 
-            function clear_selection() {
-                map.selectAll("path.neighborhood").attr("stroke", "none");
-                d3.select("#neighborhood_name").text("");
-                d3.select("#fp_measure").text("");
-                d3.select("#n2_measure").text("");
-            }
-
-            function select_neighborhood() {
-                let neighborhood = d3.select(this);
-                let neighborhood_data = neighborhood.datum();
-                if (d3.select("#neighborhood_name").text() == neighborhood_data.properties['GEONAME']) {
-                    clear_selection();
-                }
-                else {
-                    map.selectAll("path.neighborhood").attr("stroke", "none");
-
-                    neighborhood.attr("stroke", "black")
-                                .attr("stroke-width", 3);   
-                    
-                    d3.select("#neighborhood_name").text(neighborhood_data.properties['GEONAME']);
-                    d3.select("#fp_measure").text("Fine Particles Measurement: " + neighborhood_data.properties['fp_2022'] + " mcg/m3");
-                    d3.select("#n2_measure").text("Nitrogen Measurement: " + neighborhood_data.properties['n2_2022'] + " ppb");
-                }
-            }
 
             
+
+
+
+
+
+            // LEGEND DRAWING CODE
 
             function drawLegend(legendSelector, legendColorScale) {
       
