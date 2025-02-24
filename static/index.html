@@ -10,18 +10,45 @@
                 stroke: black;
                 stroke-width: 0.5px;
             }
+
+            .combined {
+                display: flex;
+                flex-direction: row;
+            }
+
+            .map {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .detail_box {
+                width: 300px;
+                border: solid black;
+                border-width: 2px;
+                padding: 10px;
+            }
         </style>
     </head>
     <body>
         <h1>Air Quality in NYC Neighborhoods</h1>
-        <label for="Selector">Pollution Type: </label>
-        <select id="Selector">
-            <option value="fp_2022">Fine Particles</option>
-            <option value="n2_2022">Nitrogen</option>
-        </select>
-        <svg id="chart1" height="600" width="650"></svg>
+        <div class="combined">
+            <div class="map">
+                <div>
+                    <label for="Selector">Pollution Type: </label>
+                    <select id="Selector">
+                        <option value="fp_2022">Fine Particles</option>
+                        <option value="n2_2022">Nitrogen</option>
+                    </select>
+                </div>
+                <svg id="chart1" height="600" width="650"></svg>
 
-        <svg id="colorLegend" height="50" width="300" style="background: #fff; margin-top:30px" ></svg>
+                <svg id="colorLegend" height="50" width="300" style="background: #fff; margin-top:30px" ></svg>
+            </div>
+            <div class="detail_box">
+                <h2>Neighborhood Details:</h2>
+                <text id="details"></text>
+            </div>
+        </div>
 
         <script>
 
@@ -83,10 +110,6 @@
 
                 console.log(neighborhoods);
 
-
-
-                
-
                 // Create extents/scales for each
                 // const fpExtent = d3.extent(air_data_2022_fp, d => d['Data Value']);
                 // const 
@@ -111,21 +134,53 @@
                 var projection = d3.geoMercator().fitSize([mapWidth, mapHeight], neighborhoods);
                 var path = d3.geoPath().projection(projection);
 
+                const Selector = d3.select("#Selector");
+                const legend = d3.select("#colorLegend");
 
-                map.selectAll("path.neighborhood").data(neighborhoods.features)
-                                                  .join("path")
-                                                  .attr("class", "neighborhood")
-                                                  .attr("d", path)
-                                                  .style("fill", d => fpScale(d.properties.fp_2022));
+                function updatemap() {
 
-                map.append("path").datum(neighborhoodsMesh)
-                   .attr("class","outline")
-                   .attr("d", path);
+                    map.selectAll("path").remove();
+                    legend.selectAll("g").remove();
 
-                drawLegend("#colorLegend", fpScale);
+                    let currentSelection = Selector.property("value");
+
+                    let scale = undefined;
+
+                    if (currentSelection == "fp_2022") {
+                        scale = fpScale;
+                    }
+                    else {
+                        scale = n2Scale;
+                    }
+
+                    map.selectAll("path.neighborhood").data(neighborhoods.features)
+                                                      .join("path")
+                                                      .attr("class", "neighborhood")
+                                                      .attr("d", path)
+                                                      .style("fill", d => scale(d.properties[currentSelection]))
+                                                      .on("click", select_neighborhood);
+
+                    map.append("path").datum(neighborhoodsMesh)
+                       .attr("class","outline")
+                       .attr("d", path);
+
+                    drawLegend("#colorLegend", scale);
+
+                }
+                updatemap();
+
+                Selector.on("change", updatemap);
 
             }
             requestData();
+
+            function select_neighborhood() {
+                map.selectAll("path.neighborhood").attr("stroke", "none");
+                let neighborhood = d3.select(this);
+
+                neighborhood.attr("stroke", "black")
+                            .attr("stroke-width", 3);
+            }
 
             function drawLegend(legendSelector, legendColorScale) {
       
@@ -269,7 +324,7 @@
                         .attr("transform",`translate(${offsets.width},${offsets.top+barHeight+5})`)
                         .call(barAxis);
                 
-                }
+            }
         </script>
     </body>
 </html>
