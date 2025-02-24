@@ -15,19 +15,31 @@
                 stroke-width: 0.5px;
             }
 
+            h1 {
+                margin-top: 30px;
+                text-align: center;
+            }
+
             .combined {
                 display: flex;
                 flex-direction: row;
+                justify-content: center;
             }
 
             .map {
                 display: flex;
                 flex-direction: column;
+                align-items: center;
+                border: solid black 2px;
+                border-radius: 10px;
+                padding: 20px;
             }
 
             .detail_box {
                 width: 500px;
                 height: 400px;
+                margin-top: 50px;
+                padding-left: 30px;
             }
             .gridlines .domain {
                 display: none;
@@ -35,6 +47,11 @@
     
             .gridlines line {
                 stroke: #aaa;
+            }
+
+            .mini_title {
+                display: none;
+                margin-bottom: 5px;
             }
         </style>
     </head>
@@ -52,14 +69,17 @@
                 <p>Select a neighborhood for more details</p>
                 <svg id="chart1" height="600" width="650"></svg>
 
-                <svg id="colorLegend" height="50" width="300" style="background: #fff; margin-top:30px" ></svg>
+                <svg id="colorLegend" height="50" width="300" style="background: white; margin-top:30px" ></svg>
             </div>
             <div class="detail_box">
                 <h3 id="neighborhood_name"></h3>
                 <p id="fp_measure"></p>
-                <p id="n2_measure"></p>
+                <h4 class="mini_title">Fine Particles Pollution Over Time</h4>
                 <svg id="mini_fpgraph" height="200", width="450"></svg>
-                <svg id="mini_n2graph" height="200", width="450" style="margin-top:20px"></svg>
+
+                <p id="n2_measure"></p>
+                <h4 class="mini_title">Nitrogen Pollution Over Time</h4>
+                <svg id="mini_n2graph" height="200", width="450"></svg>
             </div>
         </div>
 
@@ -82,7 +102,7 @@
             const n2svg = d3.select("#mini_n2graph");
             const minisvgwidth = fpsvg.attr("width");
             const minisvgheight = fpsvg.attr("height");
-            const minimargin = { top: 35, right: 35, bottom: 35, left:35};
+            const minimargin = { top: 15, right: 35, bottom: 35, left:35};
             const miniWidth = minisvgwidth - minimargin.left - minimargin.right;
             const miniHeight = minisvgheight - minimargin.top - minimargin.bottom;
 
@@ -268,6 +288,8 @@
                     fpchartArea.selectAll("circle").remove();
                     n2chartArea.selectAll("path").remove();
                     n2chartArea.selectAll("circle").remove();
+                    d3.selectAll("h4.mini_title").style("display", "none");
+
                     
                 }
 
@@ -294,8 +316,9 @@
                         let neighborhood_code = neighborhood_data.properties['GEOCODE'];
                         
                         d3.select("#neighborhood_name").text(neighborhood_name);
-                        d3.select("#fp_measure").text("Fine Particles Measurement: " + neighborhood_data.properties['fp_2022'] + " mcg/m3");
-                        d3.select("#n2_measure").text("Nitrogen Measurement: " + neighborhood_data.properties['n2_2022'] + " ppb");
+                        d3.select("#fp_measure").text("Fine Particles Measurement (2022): " + neighborhood_data.properties['fp_2022'] + " mcg/m3");
+                        d3.select("#n2_measure").text("Nitrogen Measurement (2022): " + neighborhood_data.properties['n2_2022'] + " ppb");
+                        d3.selectAll("h4.mini_title").style("display", "block");
 
                         fpannotations.append("g")
                                 .attr("class", "y axis")
@@ -326,8 +349,8 @@
 
                         fpchartArea.selectAll("circle").data(air_data_all_fp.filter(d => parseInt(d['Geo Join ID']) == neighborhood_code).sort((a, b) => a.year - b.year))
                                 .join("circle")
-                                .attr("r", 2)
-                                .attr("fill", "blue")
+                                .attr("r", 3)
+                                .attr("fill", "#6b3b04")
                                 .attr("cx", d => yearScale(d['year']))
                                 .attr("cy", d => fpminiScale(d['Data Value']));
 
@@ -355,14 +378,14 @@
                                 .datum(air_data_all_n2.filter(d => parseInt(d['Geo Join ID']) == neighborhood_code).sort((a, b) => a.year - b.year))
                                 .attr("class", "line")
                                 .attr("fill", "none")
-                                .attr("stroke", "orange")
+                                .attr("stroke", "blue")
                                 .attr("stroke-width", 3)
                                 .attr("d", n2lineGen);
 
                         n2chartArea.selectAll("circle").data(air_data_all_n2.filter(d => parseInt(d['Geo Join ID']) == neighborhood_code).sort((a, b) => a.year - b.year))
                                 .join("circle")
-                                .attr("r", 2)
-                                .attr("fill", "blue")
+                                .attr("r", 3)
+                                .attr("fill", "#040447")
                                 .attr("cx", d => yearScale(d['year']))
                                 .attr("cy", d => n2miniScale(d['Data Value']));
                     }
