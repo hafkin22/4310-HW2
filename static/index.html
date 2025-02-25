@@ -279,7 +279,7 @@
                 
                 function clear_selection() {
                     map.selectAll("path.neighborhood").attr("stroke", "none");
-                    d3.select("#neighborhood_name").text("");
+                    d3.select("#neighborhood_name").text("No Neighborhood Selected");
                     d3.select("#fp_measure").text("");
                     d3.select("#n2_measure").text("");
                     fpannotations.selectAll("g").remove();
