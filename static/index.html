@@ -74,11 +74,11 @@
             <div class="detail_box">
                 <h3 id="neighborhood_name"></h3>
                 <p id="fp_measure"></p>
-                <h4 class="mini_title">Fine Particles Pollution Over Time</h4>
+                <h4 class="mini_title">Neighborhood Fine Particles Pollution Over Time (&micro;g/m&sup3;)</h4>
                 <svg id="mini_fpgraph" height="200", width="450"></svg>
 
                 <p id="n2_measure"></p>
-                <h4 class="mini_title">Nitrogen Pollution Over Time</h4>
+                <h4 class="mini_title">Neighborhood Nitrogen Pollution Over Time (ppb)</h4>
                 <svg id="mini_n2graph" height="200", width="450"></svg>
             </div>
         </div>
@@ -316,7 +316,7 @@
                         let neighborhood_code = neighborhood_data.properties['GEOCODE'];
                         
                         d3.select("#neighborhood_name").text(neighborhood_name);
-                        d3.select("#fp_measure").text("Fine Particles Measurement (2022): " + neighborhood_data.properties['fp_2022'] + " mcg/m3");
+                        d3.select("#fp_measure").html("Fine Particles Measurement (2022): " + neighborhood_data.properties['fp_2022'] + " &micro;g/m&sup3;");
                         d3.select("#n2_measure").text("Nitrogen Measurement (2022): " + neighborhood_data.properties['n2_2022'] + " ppb");
                         d3.selectAll("h4.mini_title").style("display", "block");
 
